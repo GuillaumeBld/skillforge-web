@@ -2,6 +2,7 @@
 "use client";
 import { useState } from "react";
 import { IntakeForm } from "@/components/IntakeForm";
+import { MatchReport } from "@/components/MatchReport";
 import { matchOccupations } from "@/lib/engine";
 import type { IntakeFormData, MatchResponse, MatchResultItem } from "@/types/skillforge";
 
@@ -50,12 +51,17 @@ export default function Home() {
   }
 
   if (result && !selected) {
-    // Screen 2 placeholder — built in Task 6
     return (
-      <div>
-        <p>Results for {result.form.jobTitle}: {result.match.matches.length} matches. (Task 6)</p>
-        <button onClick={() => setResult(null)}>Back</button>
-      </div>
+      <main className="min-h-screen bg-gray-50 py-12">
+        <MatchReport
+          sourceTitle={result.match.source_title}
+          sourceNoc={result.match.source_noc}
+          matches={result.match.matches}
+          form={result.form}
+          onSelect={setSelected}
+          onBack={() => setResult(null)}
+        />
+      </main>
     );
   }
 
