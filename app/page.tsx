@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { IntakeForm } from "@/components/IntakeForm";
 import { MatchReport } from "@/components/MatchReport";
+import { ReferralPackage } from "@/components/ReferralPackage";
 import { matchOccupations } from "@/lib/engine";
 import type { IntakeFormData, MatchResponse, MatchResultItem } from "@/types/skillforge";
 
@@ -46,8 +47,15 @@ export default function Home() {
   };
 
   if (result && selected) {
-    // Screen 3 placeholder — built in Task 7
-    return <div>Referral package for {selected.title} (Task 7)</div>;
+    return (
+      <main className="min-h-screen bg-gray-50 py-12">
+        <ReferralPackage
+          match={selected}
+          form={result.form}
+          onBack={() => setSelected(null)}
+        />
+      </main>
+    );
   }
 
   if (result && !selected) {
