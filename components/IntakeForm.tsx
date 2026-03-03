@@ -39,7 +39,7 @@ export function IntakeForm({ onSubmit, loading }: Props) {
     });
   };
 
-  const toggle = (field: keyof typeof form) =>
+  const toggle = (field: "isYouth" | "isNewcomer" | "isIndigenous" | "isVisibleMinority" | "isDisability") =>
     setForm((f) => ({ ...f, [field]: !f[field] }));
 
   const PROVINCES = ["ON","BC","AB","QC","MB","SK","NS","NB","NL","PE","NT","NU","YT"];
@@ -49,8 +49,9 @@ export function IntakeForm({ onSubmit, loading }: Props) {
       <h1 className="text-2xl font-bold text-gray-900">SkillForge Intake</h1>
 
       <div>
-        <label className="block text-sm font-medium mb-1">Current job title *</label>
+        <label htmlFor="jobTitle" className="block text-sm font-medium mb-1">Current job title *</label>
         <input
+          id="jobTitle"
           required
           value={jobTitle}
           onChange={(e) => handleTitleChange(e.target.value)}
@@ -62,8 +63,9 @@ export function IntakeForm({ onSubmit, loading }: Props) {
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium mb-1">Province</label>
+          <label htmlFor="province" className="block text-sm font-medium mb-1">Province</label>
           <select
+            id="province"
             value={form.province}
             onChange={(e) => setForm((f) => ({ ...f, province: e.target.value }))}
             className="w-full border rounded px-3 py-2 text-sm"
@@ -72,8 +74,9 @@ export function IntakeForm({ onSubmit, loading }: Props) {
           </select>
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1">Years experience</label>
+          <label htmlFor="yearsExp" className="block text-sm font-medium mb-1">Years experience</label>
           <input
+            id="yearsExp"
             type="number" min={0} max={40}
             value={form.yearsExperience}
             onChange={(e) => setForm((f) => ({ ...f, yearsExperience: Number(e.target.value) }))}
@@ -96,7 +99,7 @@ export function IntakeForm({ onSubmit, loading }: Props) {
               <input
                 type="checkbox"
                 checked={form[field as keyof typeof form] as boolean}
-                onChange={() => toggle(field as keyof typeof form)}
+                onChange={() => toggle(field as "isYouth" | "isNewcomer" | "isIndigenous" | "isVisibleMinority" | "isDisability")}
               />
               {label}
             </label>
@@ -105,8 +108,8 @@ export function IntakeForm({ onSubmit, loading }: Props) {
       </fieldset>
 
       <div>
-        <label className="block text-sm font-medium mb-1">EI eligible?</label>
-        <div className="flex gap-4">
+        <label id="eiGroup" className="block text-sm font-medium mb-1">EI eligible?</label>
+        <div aria-labelledby="eiGroup" className="flex gap-4">
           {[["yes", true], ["no", false], ["unknown", null]].map(([label, val]) => (
             <label key={String(label)} className="flex items-center gap-1 text-sm cursor-pointer">
               <input
