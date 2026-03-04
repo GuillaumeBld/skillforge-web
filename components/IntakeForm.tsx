@@ -1,7 +1,7 @@
 // components/IntakeForm.tsx
 "use client";
-import { useState } from "react";
-import { lookupNoc } from "@/lib/noc-lookup";
+import { useState, useRef } from "react";
+import { matchNoc, matchNocSync } from "@/lib/noc-matcher";
 import type { IntakeFormData } from "@/types/skillforge";
 
 interface Props {
@@ -9,9 +9,16 @@ interface Props {
   loading: boolean;
 }
 
+type UploadState = "idle" | "parsing" | "done" | "error";
+
 export function IntakeForm({ onSubmit, loading }: Props) {
   const [jobTitle, setJobTitle] = useState("");
   const [nocHint, setNocHint] = useState<string | null>(null);
+  const [selectedNoc, setSelectedNoc] = useState<string>("");
+  const [uploadState, setUploadState] = useState<UploadState>("idle");
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [form, setForm] = useState<Omit<IntakeFormData, "jobTitle" | "noc">>({
     province: "ON",
     yearsExperience: 5,
@@ -23,18 +30,73 @@ export function IntakeForm({ onSubmit, loading }: Props) {
     isEiEligible: null,
   });
 
-  const handleTitleChange = (v: string) => {
+  const handleTitleChange = async (v: string) => {
     setJobTitle(v);
-    const match = lookupNoc(v);
-    setNocHint(match ? `→ NOC ${match.code}: ${match.title}` : null);
+    const syncMatch = matchNocSync(v);
+    if (syncMatch) {
+      setNocHint(`→ NOC ${syncMatch.code}: ${syncMatch.title}`);
+      setSelectedNoc(syncMatch.code);
+    } else {
+      setNocHint(null);
+      setSelectedNoc("");
+    }
+    // Async Fuse.js match (will update if corpus is loaded)
+    const matches = await matchNoc(v, 1);
+    if (matches.length > 0) {
+      setNocHint(`→ NOC ${matches[0].code}: ${matches[0].title}`);
+      setSelectedNoc(matches[0].code);
+    }
+  };
+
+  const handleResumeUpload = async (file: File) => {
+    setUploadState("parsing");
+    setUploadError(null);
+
+    const formData = new FormData();
+    formData.append("resume", file);
+
+    try {
+      const resp = await fetch("/api/parse-resume", {
+        method: "POST",
+        body: formData,
+      });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({ error: "Upload failed" }));
+        throw new Error(err.error || "Upload failed");
+      }
+      const data = await resp.json();
+
+      if (data.currentTitle) {
+        await handleTitleChange(data.currentTitle);
+        setJobTitle(data.currentTitle);
+      }
+      if (typeof data.yearsExperience === "number") {
+        setForm((f) => ({ ...f, yearsExperience: data.yearsExperience }));
+      }
+      setUploadState("done");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Could not parse resume";
+      setUploadError(msg);
+      setUploadState("error");
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) handleResumeUpload(file);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files?.[0];
+    if (file) handleResumeUpload(file);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const match = lookupNoc(jobTitle);
     onSubmit({
       jobTitle,
-      noc: match?.code ?? "",
+      noc: selectedNoc,
       ...form,
     });
   };
@@ -48,6 +110,47 @@ export function IntakeForm({ onSubmit, loading }: Props) {
     <form onSubmit={handleSubmit} className="space-y-6 max-w-lg mx-auto p-8">
       <h1 className="text-2xl font-bold text-gray-900">SkillForge Intake</h1>
 
+      {/* Resume upload */}
+      <div
+        onDrop={handleDrop}
+        onDragOver={(e) => e.preventDefault()}
+        className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-blue-400 transition-colors"
+        onClick={() => fileInputRef.current?.click()}
+      >
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".pdf,.docx"
+          onChange={handleFileChange}
+          className="hidden"
+        />
+        {uploadState === "idle" && (
+          <>
+            <p className="text-sm font-medium text-gray-700">Drop your resume here</p>
+            <p className="text-xs text-gray-500 mt-1">PDF or DOCX — fields will auto-fill</p>
+          </>
+        )}
+        {uploadState === "parsing" && (
+          <p className="text-sm text-blue-600">Parsing resume…</p>
+        )}
+        {uploadState === "done" && (
+          <p className="text-sm text-green-600">Resume parsed — review fields below</p>
+        )}
+        {uploadState === "error" && (
+          <p className="text-sm text-red-600">{uploadError}</p>
+        )}
+      </div>
+
+      <div className="relative">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-gray-200" />
+        </div>
+        <div className="relative flex justify-center text-xs text-gray-400">
+          <span className="bg-white px-2">or fill in manually</span>
+        </div>
+      </div>
+
+      {/* Job title */}
       <div>
         <label htmlFor="jobTitle" className="block text-sm font-medium mb-1">Current job title *</label>
         <input
