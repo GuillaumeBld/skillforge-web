@@ -11,6 +11,16 @@ interface Props {
 
 type UploadState = "idle" | "parsing" | "done" | "error";
 
+const PRIORITY_FIELDS: { key: "isYouth" | "isNewcomer" | "isIndigenous" | "isVisibleMinority" | "isDisability"; label: string }[] = [
+  { key: "isYouth", label: "Youth 15–29" },
+  { key: "isNewcomer", label: "Newcomer (<5yr)" },
+  { key: "isIndigenous", label: "Indigenous" },
+  { key: "isVisibleMinority", label: "Visible minority" },
+  { key: "isDisability", label: "Person w/ disability" },
+];
+
+const PROVINCES = ["ON","BC","AB","QC","MB","SK","NS","NB","NL","PE","NT","NU","YT"];
+
 export function IntakeForm({ onSubmit, loading }: Props) {
   const [jobTitle, setJobTitle] = useState("");
   const [nocHint, setNocHint] = useState<string | null>(null);
@@ -40,7 +50,6 @@ export function IntakeForm({ onSubmit, loading }: Props) {
       setNocHint(null);
       setSelectedNoc("");
     }
-    // Async Fuse.js match (will update if corpus is loaded)
     const matches = await matchNoc(v, 1);
     if (matches.length > 0) {
       setNocHint(`→ NOC ${matches[0].code}: ${matches[0].title}`);
@@ -51,21 +60,15 @@ export function IntakeForm({ onSubmit, loading }: Props) {
   const handleResumeUpload = async (file: File) => {
     setUploadState("parsing");
     setUploadError(null);
-
     const formData = new FormData();
     formData.append("resume", file);
-
     try {
-      const resp = await fetch("/api/parse-resume", {
-        method: "POST",
-        body: formData,
-      });
+      const resp = await fetch("/api/parse-resume", { method: "POST", body: formData });
       if (!resp.ok) {
         const err = await resp.json().catch(() => ({ error: "Upload failed" }));
         throw new Error(err.error || "Upload failed");
       }
       const data = await resp.json();
-
       if (data.currentTitle) {
         await handleTitleChange(data.currentTitle);
         setJobTitle(data.currentTitle);
@@ -94,28 +97,27 @@ export function IntakeForm({ onSubmit, loading }: Props) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit({
-      jobTitle,
-      noc: selectedNoc,
-      ...form,
-    });
+    onSubmit({ jobTitle, noc: selectedNoc, ...form });
   };
 
   const toggle = (field: "isYouth" | "isNewcomer" | "isIndigenous" | "isVisibleMinority" | "isDisability") =>
     setForm((f) => ({ ...f, [field]: !f[field] }));
 
-  const PROVINCES = ["ON","BC","AB","QC","MB","SK","NS","NB","NL","PE","NT","NU","YT"];
-
   return (
     <form onSubmit={handleSubmit} className="space-y-6 max-w-lg mx-auto p-8">
-      <h1 className="text-2xl font-bold text-gray-900">SkillForge Intake</h1>
 
-      {/* Resume upload */}
+      {/* Resume drop zone */}
       <div
         onDrop={handleDrop}
         onDragOver={(e) => e.preventDefault()}
-        className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-blue-400 transition-colors"
         onClick={() => fileInputRef.current?.click()}
+        className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all
+          ${uploadState === "done"
+            ? "border-[#1A7A4A] bg-green-50"
+            : uploadState === "error"
+            ? "border-red-300 bg-red-50"
+            : "border-gray-300 hover:border-[#1B4F8A] hover:bg-blue-50/40"
+          }`}
       >
         <input
           ref={fileInputRef}
@@ -125,16 +127,31 @@ export function IntakeForm({ onSubmit, loading }: Props) {
           className="hidden"
         />
         {uploadState === "idle" && (
-          <>
-            <p className="text-sm font-medium text-gray-700">Drop your resume here</p>
-            <p className="text-xs text-gray-500 mt-1">PDF or DOCX — fields will auto-fill</p>
-          </>
+          <div className="flex flex-col items-center gap-2">
+            <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <path d="M10 3v10M6 7l4-4 4 4M4 17h12" stroke="#6B7280" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
+            <p className="text-sm font-semibold text-gray-700">Drop your resume here</p>
+            <p className="text-xs text-gray-400">PDF or DOCX — fields auto-fill</p>
+          </div>
         )}
         {uploadState === "parsing" && (
-          <p className="text-sm text-blue-600">Parsing resume…</p>
+          <div className="flex items-center justify-center gap-2 text-sm text-[#1B4F8A]">
+            <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="31.4" strokeDashoffset="10"/>
+            </svg>
+            Parsing resume…
+          </div>
         )}
         {uploadState === "done" && (
-          <p className="text-sm text-green-600">Resume parsed — review fields below</p>
+          <div className="flex items-center justify-center gap-2 text-sm text-[#1A7A4A] font-medium">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M4 10l5 5 7-8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            Resume parsed — review fields below
+          </div>
         )}
         {uploadState === "error" && (
           <p className="text-sm text-red-600">{uploadError}</p>
@@ -145,79 +162,92 @@ export function IntakeForm({ onSubmit, loading }: Props) {
         <div className="absolute inset-0 flex items-center">
           <div className="w-full border-t border-gray-200" />
         </div>
-        <div className="relative flex justify-center text-xs text-gray-400">
-          <span className="bg-white px-2">or fill in manually</span>
+        <div className="relative flex justify-center">
+          <span className="bg-[#F8F7F5] px-3 text-xs text-gray-400">or fill in manually</span>
         </div>
       </div>
 
       {/* Job title */}
       <div>
-        <label htmlFor="jobTitle" className="block text-sm font-medium mb-1">Current job title *</label>
+        <label htmlFor="jobTitle" className="block text-sm font-semibold text-gray-700 mb-1.5">
+          Current job title <span className="text-red-400">*</span>
+        </label>
         <input
           id="jobTitle"
           required
           value={jobTitle}
           onChange={(e) => handleTitleChange(e.target.value)}
           placeholder="e.g. Financial Analyst, Software Developer"
-          className="w-full border rounded px-3 py-2 text-sm"
+          className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B4F8A]/30 focus:border-[#1B4F8A] transition"
         />
-        {nocHint && <p className="text-xs text-blue-600 mt-1">{nocHint}</p>}
+        {nocHint && (
+          <p className="text-xs text-[#1B4F8A] mt-1.5 font-medium">{nocHint}</p>
+        )}
       </div>
 
+      {/* Province + Years */}
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label htmlFor="province" className="block text-sm font-medium mb-1">Province</label>
+          <label htmlFor="province" className="block text-sm font-semibold text-gray-700 mb-1.5">Province</label>
           <select
             id="province"
             value={form.province}
             onChange={(e) => setForm((f) => ({ ...f, province: e.target.value }))}
-            className="w-full border rounded px-3 py-2 text-sm"
+            className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B4F8A]/30 focus:border-[#1B4F8A] transition bg-white"
           >
             {PROVINCES.map((p) => <option key={p}>{p}</option>)}
           </select>
         </div>
         <div>
-          <label htmlFor="yearsExp" className="block text-sm font-medium mb-1">Years experience</label>
+          <label htmlFor="yearsExp" className="block text-sm font-semibold text-gray-700 mb-1.5">Years experience</label>
           <input
             id="yearsExp"
             type="number" min={0} max={40}
             value={form.yearsExperience}
             onChange={(e) => setForm((f) => ({ ...f, yearsExperience: Number(e.target.value) }))}
-            className="w-full border rounded px-3 py-2 text-sm"
+            className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B4F8A]/30 focus:border-[#1B4F8A] transition"
           />
         </div>
       </div>
 
+      {/* Priority groups — pill chips */}
       <fieldset>
-        <legend className="text-sm font-medium mb-2">Priority groups (check all that apply)</legend>
-        <div className="space-y-2">
-          {[
-            ["isYouth", "Youth (age 15-29)"],
-            ["isNewcomer", "Newcomer to Canada (<5 years)"],
-            ["isIndigenous", "Indigenous"],
-            ["isVisibleMinority", "Visible minority"],
-            ["isDisability", "Person with disability"],
-          ].map(([field, label]) => (
-            <label key={field} className="flex items-center gap-2 text-sm cursor-pointer">
-              <input
-                type="checkbox"
-                checked={form[field as keyof typeof form] as boolean}
-                onChange={() => toggle(field as "isYouth" | "isNewcomer" | "isIndigenous" | "isVisibleMinority" | "isDisability")}
-              />
+        <legend className="text-sm font-semibold text-gray-700 mb-2.5">Priority groups</legend>
+        <div className="flex flex-wrap gap-2">
+          {PRIORITY_FIELDS.map(({ key, label }) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => toggle(key)}
+              className={`px-3.5 py-1.5 rounded-full text-sm font-medium border transition-all ${
+                form[key]
+                  ? "bg-[#1B4F8A] text-white border-[#1B4F8A] shadow-sm"
+                  : "bg-white text-gray-600 border-gray-300 hover:border-[#1B4F8A] hover:text-[#1B4F8A]"
+              }`}
+            >
               {label}
-            </label>
+            </button>
           ))}
         </div>
       </fieldset>
 
+      {/* EI eligibility */}
       <div>
-        <label id="eiGroup" className="block text-sm font-medium mb-1">EI eligible?</label>
-        <div aria-labelledby="eiGroup" className="flex gap-4">
-          {[["yes", true], ["no", false], ["unknown", null]].map(([label, val]) => (
-            <label key={String(label)} className="flex items-center gap-1 text-sm cursor-pointer">
+        <label id="eiGroup" className="block text-sm font-semibold text-gray-700 mb-2.5">EI eligible?</label>
+        <div aria-labelledby="eiGroup" className="flex gap-3">
+          {([["yes", true], ["no", false], ["unknown", null]] as const).map(([label, val]) => (
+            <label
+              key={String(label)}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border text-sm cursor-pointer transition-all font-medium ${
+                form.isEiEligible === val
+                  ? "bg-[#1B4F8A] text-white border-[#1B4F8A]"
+                  : "bg-white text-gray-600 border-gray-300 hover:border-[#1B4F8A]"
+              }`}
+            >
               <input
                 type="radio"
                 name="ei"
+                className="sr-only"
                 checked={form.isEiEligible === val}
                 onChange={() => setForm((f) => ({ ...f, isEiEligible: val as boolean | null }))}
               />
@@ -230,7 +260,7 @@ export function IntakeForm({ onSubmit, loading }: Props) {
       <button
         type="submit"
         disabled={loading || !jobTitle}
-        className="w-full bg-blue-600 text-white py-2 rounded font-medium disabled:opacity-50"
+        className="w-full bg-[#E8810A] hover:bg-[#C96E08] text-white py-3 rounded-xl font-semibold text-sm disabled:opacity-50 transition-colors shadow-sm"
       >
         {loading ? "Matching…" : "Find Trade Pathways →"}
       </button>
