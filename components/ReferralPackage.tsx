@@ -17,6 +17,36 @@ interface Props {
   onBack: () => void;
 }
 
+function SectionHeader({ children }: { children: React.ReactNode }) {
+  return (
+    <h2 className="text-sm font-extrabold text-gray-900 uppercase tracking-wider mb-3 flex items-center gap-2">
+      <span className="w-1 h-4 bg-[#1B4F8A] rounded-full flex-shrink-0" aria-hidden="true" />
+      {children}
+    </h2>
+  );
+}
+
+function CheckRow({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex items-start gap-2.5 text-sm text-gray-700">
+      <svg className="w-4 h-4 text-[#1A7A4A] mt-0.5 flex-shrink-0" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5"/>
+        <path d="M5 8l2 2 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+      <span>{children}</span>
+    </div>
+  );
+}
+
+function ChecklistRow({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex items-start gap-2.5 text-sm text-gray-700">
+      <span className="w-4 h-4 border-2 border-gray-300 rounded mt-0.5 flex-shrink-0" aria-hidden="true" />
+      <span>{children}</span>
+    </div>
+  );
+}
+
 export function ReferralPackage({ match, form, onBack }: Props) {
   const [downloading, setDownloading] = useState(false);
   const funding = FUNDING_BY_PROVINCE[form.province] ?? FUNDING_BY_PROVINCE["default"];
@@ -49,84 +79,91 @@ export function ReferralPackage({ match, form, onBack }: Props) {
     "EI application / EI statement (if EI-eligible)",
     "Educational credentials (if applicable)",
     `Proof of residence in ${form.province}`,
-    form.isYouth ? "Proof of age (youth 15-29 priority)" : null,
+    form.isYouth ? "Proof of age (youth 15–29 priority)" : null,
     form.isNewcomer ? "Permanent Resident card / proof of landing date" : null,
     form.isIndigenous ? "Indigenous status documentation (self-identification accepted)" : null,
   ].filter((item): item is string => item !== null);
 
   return (
     <div className="max-w-2xl mx-auto p-8">
-      <button onClick={onBack} className="text-sm text-blue-600 mb-6">← Back to matches</button>
+      <button
+        onClick={onBack}
+        className="text-sm text-[#1B4F8A] hover:text-[#163E6E] mb-6 flex items-center gap-1 font-medium transition-colors"
+      >
+        ← Back to matches
+      </button>
 
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
-        <h1 className="text-xl font-bold mb-1">Referral Package</h1>
-        <p className="text-gray-600 text-sm">
-          {form.jobTitle} → {match.title} (NOC {match.noc_code})
+      {/* Hero header */}
+      <div className="bg-[#1B4F8A] rounded-xl p-6 mb-6 text-white">
+        <p className="text-blue-200 text-xs font-semibold uppercase tracking-wider mb-1">Referral Package</p>
+        <h1 className="text-xl font-extrabold mb-0.5">{match.title}</h1>
+        <p className="text-blue-200 text-sm">
+          {form.jobTitle} → NOC {match.noc_code}
         </p>
       </div>
 
+      {/* Funding highlight */}
+      <div className="bg-amber-50 border border-amber-200 rounded-xl p-5 mb-6">
+        <p className="text-xs font-bold text-amber-700 uppercase tracking-wider mb-1">Available funding</p>
+        <p className="text-2xl font-extrabold text-gray-900">{funding.lmda}</p>
+        <p className="text-xs text-gray-500 mt-0.5">LMDA + {funding.wda}</p>
+      </div>
+
+      {/* Funding eligibility */}
       <section className="mb-6">
-        <h2 className="font-semibold mb-3">Funding Eligibility</h2>
-        <div className="space-y-2 text-sm">
+        <SectionHeader>Funding Eligibility</SectionHeader>
+        <div className="space-y-2.5">
           {form.isEiEligible !== false && (
-            <div className="flex items-start gap-2">
-              <span className="text-green-600 flex-shrink-0">✓</span>
-              <div>
-                <strong>LMDA (EI-funded)</strong> — {funding.lmda} for approved training
-              </div>
-            </div>
+            <CheckRow>
+              <strong>LMDA (EI-funded)</strong> — {funding.lmda} for approved training
+            </CheckRow>
           )}
-          <div className="flex items-start gap-2">
-            <span className="text-green-600 flex-shrink-0">✓</span>
-            <div>
-              <strong>WDA</strong> — {funding.wda} (all displaced workers)
-            </div>
-          </div>
+          <CheckRow>
+            <strong>WDA</strong> — {funding.wda} (all displaced workers)
+          </CheckRow>
           {isRedSeal && (
             <>
-              <div className="flex items-start gap-2">
-                <span className="text-green-600 flex-shrink-0">✓</span>
-                <div><strong>Apprenticeship Incentive Grant</strong> — $1,000/year during apprenticeship</div>
-              </div>
-              <div className="flex items-start gap-2">
-                <span className="text-green-600 flex-shrink-0">✓</span>
-                <div><strong>Apprenticeship Completion Bonus</strong> — $2,000 at Red Seal</div>
-              </div>
+              <CheckRow>
+                <strong>Apprenticeship Incentive Grant</strong> — $1,000/year during apprenticeship
+              </CheckRow>
+              <CheckRow>
+                <strong>Apprenticeship Completion Bonus</strong> — $2,000 at Red Seal
+              </CheckRow>
             </>
           )}
         </div>
       </section>
 
+      {/* Checklist */}
       <section className="mb-6">
-        <h2 className="font-semibold mb-3">LMDA Referral Checklist</h2>
-        <ul className="space-y-2 text-sm text-gray-700">
+        <SectionHeader>LMDA Referral Checklist</SectionHeader>
+        <div className="space-y-2.5">
           {checklistItems.map((item, i) => (
-            <li key={i} className="flex items-start gap-2">
-              <span className="mt-0.5 w-4 h-4 border border-gray-400 rounded-sm flex-shrink-0" aria-hidden="true" />
-              {item}
-            </li>
+            <ChecklistRow key={i}>{item}</ChecklistRow>
           ))}
-        </ul>
-      </section>
-
-      <section className="mb-6">
-        <h2 className="font-semibold mb-3">Training Program</h2>
-        <div className="text-sm text-gray-700 space-y-1">
-          <p>Program: {match.training_programs[0] ?? "Trade school / apprenticeship"}</p>
-          <p>NOC: {match.noc_code} — {match.title}</p>
-          <p>TEER level: {match.teer} — {match.teer <= 2 ? "Apprenticeship / Red Seal eligible" : "Certificate / diploma"}</p>
         </div>
       </section>
 
+      {/* Training */}
+      <section className="mb-7">
+        <SectionHeader>Training Program</SectionHeader>
+        <div className="text-sm text-gray-700 space-y-1">
+          <p>Program: <span className="font-medium">{match.training_programs[0] ?? "Trade school / apprenticeship"}</span></p>
+          <p>NOC: <span className="font-medium">{match.noc_code} — {match.title}</span></p>
+          <p>TEER level: <span className="font-medium">{match.teer} — {match.teer <= 2 ? "Apprenticeship / Red Seal eligible" : "Certificate / diploma"}</span></p>
+        </div>
+      </section>
+
+      {/* Actions */}
       <div className="flex gap-3">
         <button
           onClick={download}
           disabled={downloading}
-          className="flex-1 bg-blue-600 text-white py-2 rounded font-medium disabled:opacity-50"
+          className="flex-1 bg-[#E8810A] hover:bg-[#C96E08] text-white py-3 rounded-xl font-semibold text-sm disabled:opacity-50 transition-colors shadow-sm"
         >
           {downloading ? "Generating PDF…" : "Download PDF"}
         </button>
-        <button className="flex-1 border border-gray-300 py-2 rounded font-medium text-sm text-gray-700">
+        <button className="flex-1 border border-gray-300 hover:border-gray-400 py-3 rounded-xl font-semibold text-sm text-gray-700 transition-colors">
           Email to worker
         </button>
       </div>
