@@ -1,17 +1,14 @@
 // app/api/parse-resume/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 
 const ResumeSchema = z.object({
-  currentTitle: z.string().describe("The person's most recent job title"),
-  yearsExperience: z.number().int().min(0).max(50).describe("Total years of professional experience"),
-  skills: z.array(z.string()).max(20).describe("Key professional skills extracted from resume"),
+  currentTitle: z.string(),
+  yearsExperience: z.number().int().min(0).max(50),
+  skills: z.array(z.string()).max(20),
 });
 
 type ResumeData = z.infer<typeof ResumeSchema>;
-
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 async function extractTextFromPdf(buffer: ArrayBuffer): Promise<string> {
   const { extractText } = await import("unpdf");
@@ -26,6 +23,23 @@ async function extractTextFromDocx(buffer: ArrayBuffer): Promise<string> {
   return result.value;
 }
 
+const EXTRACT_TOOL = {
+  type: "function" as const,
+  function: {
+    name: "extract_resume",
+    description: "Extract structured resume data",
+    parameters: {
+      type: "object",
+      properties: {
+        currentTitle: { type: "string", description: "The person's most recent job title" },
+        yearsExperience: { type: "integer", minimum: 0, maximum: 50, description: "Total years of professional experience" },
+        skills: { type: "array", items: { type: "string" }, maxItems: 20, description: "Key professional skills extracted from resume" },
+      },
+      required: ["currentTitle", "yearsExperience", "skills"],
+    },
+  },
+};
+
 export async function POST(request: NextRequest) {
   let formData: FormData;
   try {
@@ -39,7 +53,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "No resume file provided" }, { status: 400 });
   }
 
-  // Validate file type and size (max 5 MB)
   const allowedTypes = [
     "application/pdf",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -51,7 +64,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "File too large (max 5 MB)" }, { status: 400 });
   }
 
-  // Extract text
   let resumeText: string;
   try {
     const buffer = await file.arrayBuffer();
@@ -74,49 +86,42 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Truncate to first 6000 chars (enough for Haiku, avoids token waste)
   const truncated = resumeText.slice(0, 6000);
 
-  // JSON schema for structured extraction (inlined to avoid Zod v4 compat issues)
-  const extractResumeSchema: Anthropic.Tool["input_schema"] = {
-    type: "object",
-    properties: {
-      currentTitle: { type: "string", description: "The person's most recent job title" },
-      yearsExperience: { type: "integer", minimum: 0, maximum: 50, description: "Total years of professional experience" },
-      skills: { type: "array", items: { type: "string" }, maxItems: 20, description: "Key professional skills extracted from resume" },
-    },
-    required: ["currentTitle", "yearsExperience", "skills"],
-  };
-
-  // Call Claude Haiku with forced tool use (structured output)
   let extracted: ResumeData;
   try {
-    const response = await client.messages.create({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 512,
-      messages: [
-        {
-          role: "user",
-          content: `Extract structured information from this resume. Be conservative: if years of experience is unclear, estimate from work history.\n\n---\n${truncated}\n---`,
-        },
-      ],
-      tools: [
-        {
-          name: "extract_resume",
-          description: "Extract structured resume data",
-          input_schema: extractResumeSchema,
-        },
-      ],
-      tool_choice: { type: "tool", name: "extract_resume" },
+    const resp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "anthropic/claude-3-haiku",
+        max_tokens: 512,
+        messages: [
+          {
+            role: "user",
+            content: `Extract structured information from this resume. Be conservative: if years of experience is unclear, estimate from work history.\n\n---\n${truncated}\n---`,
+          },
+        ],
+        tools: [EXTRACT_TOOL],
+        tool_choice: { type: "function", function: { name: "extract_resume" } },
+      }),
     });
 
-    const toolUse = response.content.find((b) => b.type === "tool_use");
-    if (!toolUse || toolUse.type !== "tool_use") {
-      throw new Error("No tool_use block in response");
+    if (!resp.ok) {
+      const body = await resp.text();
+      throw new Error(`OpenRouter ${resp.status}: ${body}`);
     }
-    extracted = ResumeSchema.parse(toolUse.input);
+
+    const data = await resp.json();
+    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+    if (!toolCall) throw new Error("No tool_call in response");
+    const args = JSON.parse(toolCall.function.arguments);
+    extracted = ResumeSchema.parse(args);
   } catch (err) {
-    console.error("Claude extraction failed:", err);
+    console.error("Extraction failed:", err);
     return NextResponse.json(
       { error: "Could not extract resume data. Please fill in the form manually." },
       { status: 422 }
