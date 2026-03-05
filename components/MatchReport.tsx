@@ -124,6 +124,24 @@ export function MatchReport({ sourceTitle, sourceNoc, matches, form, onSelect, o
               )}
             </div>
 
+            {m.transferable_skills.length > 0 && (
+              <div className="mb-4">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                  Skills you already have
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {m.transferable_skills.map((skill) => (
+                    <span
+                      key={skill}
+                      className="text-xs px-2.5 py-1 rounded-full bg-[#EDF4FF] text-[#1B4F8A] border border-[#C7DEFF] font-medium"
+                    >
+                      {skill}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {m.training_programs.length > 0 && (
               <p className="text-xs text-gray-500 mb-1.5">
                 Training: {m.training_programs.slice(0, 2).join(" · ")}

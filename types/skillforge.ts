@@ -25,6 +25,7 @@ export interface MatchResultItem {
   funding_eligible: boolean;
   training_programs: string[];
   ai_tools: string[];
+  transferable_skills: string[];
 }
 
 export interface MatchResponse {
