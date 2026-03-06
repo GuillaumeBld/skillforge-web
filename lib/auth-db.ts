@@ -1,13 +1,17 @@
 // lib/auth-db.ts
 import Database from "better-sqlite3";
 import path from "path";
-import crypto from "crypto";
+import { randomUUID } from "crypto";
+import bcrypt from "bcryptjs";
 
-const DB_PATH = path.join(process.cwd(), "..", "skillforge", "data", "auth.db");
+const DB_PATH = process.env.AUTH_DB_PATH ?? path.join(process.cwd(), "..", "skillforge", "data", "auth.db");
 
-function getDb() {
-  const db = new Database(DB_PATH);
-  db.exec(`
+let _db: Database.Database | null = null;
+
+function getDb(): Database.Database {
+  if (_db) return _db;
+  _db = new Database(DB_PATH);
+  _db.exec(`
     CREATE TABLE IF NOT EXISTS schools (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
@@ -16,7 +20,7 @@ function getDb() {
       created_at TEXT DEFAULT (datetime('now'))
     )
   `);
-  return db;
+  return _db;
 }
 
 export function findSchoolByEmail(email: string) {
@@ -27,14 +31,13 @@ export function findSchoolByEmail(email: string) {
 }
 
 export function verifyPassword(plain: string, hash: string): boolean {
-  const h = crypto.createHash("sha256").update(plain).digest("hex");
-  return h === hash;
+  return bcrypt.compareSync(plain, hash);
 }
 
 export function createSchool(name: string, email: string, password: string) {
   const db = getDb();
-  const id = crypto.randomUUID();
-  const password_hash = crypto.createHash("sha256").update(password).digest("hex");
+  const id = randomUUID();
+  const password_hash = bcrypt.hashSync(password, 12);
   db.prepare("INSERT INTO schools (id, name, email, password_hash) VALUES (?, ?, ?, ?)").run(
     id, name, email, password_hash
   );
