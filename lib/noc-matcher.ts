@@ -29,8 +29,8 @@ async function loadCorpus(): Promise<void> {
     const entries: NocEntry[] = await resp.json();
     _fuse = new Fuse(entries, {
       keys: ["title"],
-      threshold: 0.4,
-      distance: 100,
+      threshold: 0.6,
+      distance: 200,
       minMatchCharLength: 3,
       includeScore: true,
     });
