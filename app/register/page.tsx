@@ -12,22 +12,27 @@ export default function RegisterPage() {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    const form = new FormData(e.currentTarget);
-    const res = await fetch("/api/auth/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: form.get("name"),
-        email: form.get("email"),
-        password: form.get("password"),
-      }),
-    });
-    setLoading(false);
-    if (!res.ok) {
-      const data = await res.json();
-      setError(data.error || "Registration failed.");
-    } else {
-      router.push("/login");
+    try {
+      const form = new FormData(e.currentTarget);
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: form.get("name"),
+          email: form.get("email"),
+          password: form.get("password"),
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || "Registration failed.");
+      } else {
+        router.push("/login");
+      }
+    } catch {
+      setError("Network error. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
