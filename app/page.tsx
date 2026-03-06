@@ -30,6 +30,8 @@ export default function Home() {
       });
       if (res.ok) setPdfBlob(await res.blob());
       else setPdfError("Could not generate PDF. Please try again.");
+    } catch {
+      setPdfError("Could not generate PDF. Please try again.");
     } finally {
       setPdfLoading(false);
     }
@@ -77,7 +79,7 @@ export default function Home() {
           pdfBlob={pdfBlob}
           pdfLoading={pdfLoading}
           pdfError={pdfError}
-          onBack={() => { setSelected(null); setPdfBlob(null); }}
+          onBack={() => { setSelected(null); setPdfBlob(null); setPdfError(null); }}
         />
       </main>
     );
