@@ -1,6 +1,5 @@
 // components/ReferralPackage.tsx
 "use client";
-import { useState } from "react";
 import type { MatchResultItem, IntakeFormData } from "@/types/skillforge";
 
 const FUNDING_BY_PROVINCE: Record<string, { lmda: string; wda: string }> = {
@@ -14,6 +13,8 @@ const FUNDING_BY_PROVINCE: Record<string, { lmda: string; wda: string }> = {
 interface Props {
   match: MatchResultItem;
   form: IntakeFormData;
+  pdfBlob: Blob | null;
+  pdfLoading: boolean;
   onBack: () => void;
 }
 
@@ -47,30 +48,18 @@ function ChecklistRow({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function ReferralPackage({ match, form, onBack }: Props) {
-  const [downloading, setDownloading] = useState(false);
+export function ReferralPackage({ match, form, pdfBlob, pdfLoading, onBack }: Props) {
   const funding = FUNDING_BY_PROVINCE[form.province] ?? FUNDING_BY_PROVINCE["default"];
   const isRedSeal = match.teer <= 2 && match.noc_code[0] === "7";
 
-  const download = async () => {
-    setDownloading(true);
-    try {
-      const res = await fetch("/api/referral-pdf", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ match, form }),
-      });
-      if (!res.ok) throw new Error(`PDF generation failed: ${res.status}`);
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `skillforge-referral-${match.noc_code}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } finally {
-      setDownloading(false);
-    }
+  const handleDownload = () => {
+    if (!pdfBlob) return;
+    const url = URL.createObjectURL(pdfBlob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `skillforge-referral-${match.noc_code}.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const checklistItems = [
@@ -157,11 +146,11 @@ export function ReferralPackage({ match, form, onBack }: Props) {
       {/* Actions */}
       <div className="flex gap-3">
         <button
-          onClick={download}
-          disabled={downloading}
+          onClick={handleDownload}
+          disabled={pdfLoading || !pdfBlob}
           className="flex-1 bg-[#E8810A] hover:bg-[#C96E08] text-white py-3 rounded-xl font-semibold text-sm disabled:opacity-50 transition-colors shadow-sm"
         >
-          {downloading ? "Generating PDF…" : "Download PDF"}
+          {pdfLoading ? "Preparing PDF…" : "Download Referral Package (PDF)"}
         </button>
         <button className="flex-1 border border-gray-300 hover:border-gray-400 py-3 rounded-xl font-semibold text-sm text-gray-700 transition-colors">
           Email to worker

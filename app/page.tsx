@@ -12,6 +12,25 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{ form: IntakeFormData; match: MatchResponse } | null>(null);
   const [selected, setSelected] = useState<MatchResultItem | null>(null);
+  const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
+  const [pdfLoading, setPdfLoading] = useState(false);
+
+  const handleSelect = async (match: MatchResultItem) => {
+    setSelected(match);
+    if (!result) return;
+    setPdfLoading(true);
+    setPdfBlob(null);
+    try {
+      const res = await fetch("/api/referral-pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ match, form: result.form }),
+      });
+      if (res.ok) setPdfBlob(await res.blob());
+    } finally {
+      setPdfLoading(false);
+    }
+  };
 
   const handleSubmit = async (data: IntakeFormData) => {
     if (!data.noc) {
@@ -52,7 +71,9 @@ export default function Home() {
         <ReferralPackage
           match={selected}
           form={result.form}
-          onBack={() => setSelected(null)}
+          pdfBlob={pdfBlob}
+          pdfLoading={pdfLoading}
+          onBack={() => { setSelected(null); setPdfBlob(null); }}
         />
       </main>
     );
@@ -66,7 +87,7 @@ export default function Home() {
           sourceNoc={result.match.source_noc}
           matches={result.match.matches}
           form={result.form}
-          onSelect={setSelected}
+          onSelect={handleSelect}
           onBack={() => setResult(null)}
         />
       </main>
