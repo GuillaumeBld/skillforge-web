@@ -6,21 +6,22 @@ import bcrypt from "bcryptjs";
 
 const DB_PATH = process.env.AUTH_DB_PATH ?? path.join(process.cwd(), "..", "skillforge", "data", "auth.db");
 
-let _db: Database.Database | null = null;
+const g = globalThis as typeof globalThis & { __authDb?: Database.Database };
 
 function getDb(): Database.Database {
-  if (_db) return _db;
-  _db = new Database(DB_PATH);
-  _db.exec(`
-    CREATE TABLE IF NOT EXISTS schools (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      email TEXT UNIQUE NOT NULL,
-      password_hash TEXT NOT NULL,
-      created_at TEXT DEFAULT (datetime('now'))
-    )
-  `);
-  return _db;
+  if (!g.__authDb) {
+    g.__authDb = new Database(DB_PATH);
+    g.__authDb.exec(`
+      CREATE TABLE IF NOT EXISTS schools (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        email TEXT UNIQUE NOT NULL,
+        password_hash TEXT NOT NULL,
+        created_at TEXT DEFAULT (datetime('now'))
+      )
+    `);
+  }
+  return g.__authDb;
 }
 
 export function findSchoolByEmail(email: string) {
