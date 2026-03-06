@@ -14,12 +14,14 @@ export default function Home() {
   const [selected, setSelected] = useState<MatchResultItem | null>(null);
   const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
   const [pdfLoading, setPdfLoading] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
 
   const handleSelect = async (match: MatchResultItem) => {
     setSelected(match);
     if (!result) return;
     setPdfLoading(true);
     setPdfBlob(null);
+    setPdfError(null);
     try {
       const res = await fetch("/api/referral-pdf", {
         method: "POST",
@@ -27,6 +29,7 @@ export default function Home() {
         body: JSON.stringify({ match, form: result.form }),
       });
       if (res.ok) setPdfBlob(await res.blob());
+      else setPdfError("Could not generate PDF. Please try again.");
     } finally {
       setPdfLoading(false);
     }
@@ -73,6 +76,7 @@ export default function Home() {
           form={result.form}
           pdfBlob={pdfBlob}
           pdfLoading={pdfLoading}
+          pdfError={pdfError}
           onBack={() => { setSelected(null); setPdfBlob(null); }}
         />
       </main>

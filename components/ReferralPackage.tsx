@@ -15,6 +15,7 @@ interface Props {
   form: IntakeFormData;
   pdfBlob: Blob | null;
   pdfLoading: boolean;
+  pdfError?: string | null;
   onBack: () => void;
 }
 
@@ -48,7 +49,7 @@ function ChecklistRow({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function ReferralPackage({ match, form, pdfBlob, pdfLoading, onBack }: Props) {
+export function ReferralPackage({ match, form, pdfBlob, pdfLoading, pdfError, onBack }: Props) {
   const funding = FUNDING_BY_PROVINCE[form.province] ?? FUNDING_BY_PROVINCE["default"];
   const isRedSeal = match.teer <= 2 && match.noc_code[0] === "7";
 
@@ -156,6 +157,7 @@ export function ReferralPackage({ match, form, pdfBlob, pdfLoading, onBack }: Pr
           Email to worker
         </button>
       </div>
+      {pdfError && <p className="mt-2 text-sm text-red-600">{pdfError}</p>}
     </div>
   );
 }
