@@ -30,3 +30,21 @@ export async function checkHealth(): Promise<boolean> {
     return false;
   }
 }
+
+export async function saveIntakeRecord(record: {
+  school_id: string;
+  worker_title: string;
+  source_noc: string;
+  matched_noc: string;
+  matched_title: string;
+  composite_score: number;
+  funding_eligible: boolean;
+  province: string;
+}) {
+  // Fire-and-forget — don't block the UI on intake persistence
+  fetch(`${BASE}/intake`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(record),
+  }).catch((e) => console.warn("intake record save failed:", e));
+}

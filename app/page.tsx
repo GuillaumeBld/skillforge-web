@@ -1,13 +1,15 @@
 // app/page.tsx
 "use client";
 import { useState } from "react";
+import { useSession } from "next-auth/react";
 import { IntakeForm } from "@/components/IntakeForm";
 import { MatchReport } from "@/components/MatchReport";
 import { ReferralPackage } from "@/components/ReferralPackage";
-import { matchOccupations } from "@/lib/engine";
+import { matchOccupations, saveIntakeRecord } from "@/lib/engine";
 import type { IntakeFormData, MatchResponse, MatchResultItem } from "@/types/skillforge";
 
 export default function Home() {
+  const { data: session } = useSession();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{ form: IntakeFormData; match: MatchResponse } | null>(null);
@@ -18,6 +20,18 @@ export default function Home() {
 
   const handleSelect = async (match: MatchResultItem) => {
     setSelected(match);
+    if (session?.user?.id) {
+      saveIntakeRecord({
+        school_id: session.user.id,
+        worker_title: result?.form?.jobTitle ?? "",
+        source_noc: result?.match?.source_noc ?? "",
+        matched_noc: match.noc_code,
+        matched_title: match.title,
+        composite_score: match.composite_score,
+        funding_eligible: match.funding_eligible,
+        province: result?.form?.province ?? "ON",
+      });
+    }
     if (!result) return;
     setPdfLoading(true);
     setPdfBlob(null);
