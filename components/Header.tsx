@@ -1,5 +1,10 @@
 // components/Header.tsx
-export function Header() {
+import Link from "next/link";
+import { auth, signOut } from "@/auth";
+
+export async function Header() {
+  const session = await auth();
+
   return (
     <header className="bg-[#1B4F8A] text-white">
       <div className="max-w-2xl mx-auto px-8 py-4 flex items-center gap-3">
@@ -9,12 +14,35 @@ export function Header() {
               fill="white" />
           </svg>
         </div>
-        <div>
+        <div className="flex-1 flex items-center gap-2">
           <span className="font-extrabold text-base tracking-tight">SkillForge</span>
           <span className="ml-2 text-blue-200 text-xs font-normal hidden sm:inline">
             Canadian Trade Pathway Matching
           </span>
         </div>
+        {session?.user && (
+          <nav className="flex items-center gap-4 text-sm">
+            <Link
+              href="/admin"
+              className="text-blue-200 hover:text-white font-semibold transition-colors"
+            >
+              Admin
+            </Link>
+            <form
+              action={async () => {
+                "use server";
+                await signOut({ redirectTo: "/login" });
+              }}
+            >
+              <button
+                type="submit"
+                className="text-blue-200 hover:text-white font-semibold transition-colors"
+              >
+                Sign out
+              </button>
+            </form>
+          </nav>
+        )}
       </div>
     </header>
   );
