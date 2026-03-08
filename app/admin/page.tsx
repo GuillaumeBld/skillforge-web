@@ -32,9 +32,11 @@ export default async function AdminPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
-  const records = await getIntakeRecords(session.user.id!);
+  const schoolId = session.user.id;
+  if (!schoolId) redirect("/login");
+  const records = await getIntakeRecords(schoolId);
   const total = records.length;
-  const fundingCount = records.filter(r => r.funding_eligible).length;
+  const fundingCount = records.filter(r => r.funding_eligible === 1).length;
   const topTrades = Object.entries(
     records.reduce((acc, r) => {
       acc[r.matched_title] = (acc[r.matched_title] || 0) + 1;
@@ -101,7 +103,7 @@ export default async function AdminPage() {
                   <td className="px-5 py-3 text-gray-700">{r.matched_title}</td>
                   <td className="px-5 py-3 font-semibold text-[#1B4F8A]">{Math.round(r.composite_score * 100)}</td>
                   <td className="px-5 py-3">
-                    {r.funding_eligible
+                    {r.funding_eligible === 1
                       ? <span className="text-[#1A7A4A] font-semibold">✓</span>
                       : <span className="text-gray-300">—</span>}
                   </td>
